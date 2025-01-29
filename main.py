@@ -25,28 +25,6 @@ DB_NAME = 'quiz_bot.db'
 # Структура квиза
 quiz_data = qfile.question_file('question.json')
 
-async def update_leaderboard(user_id: int, username: str, score: int):
-    async with aiosqlite.connect(DB_NAME) as db:
-        # Вставляем или обновляем запись в таблице лидеров
-        await db.execute('''INSERT OR REPLACE INTO leaderboard (user_id, username, score)
-                            VALUES (?, ?, ?)''', (user_id, username, score))
-        await db.commit()
-
-async def show_leaderboard(message: types.Message):
-    async with aiosqlite.connect(DB_NAME) as db:
-        # Получаем топ-10 пользователей
-        async with db.execute('''SELECT username, score FROM leaderboard
-                                 ORDER BY score DESC LIMIT 10''') as cursor:
-            leaders = await cursor.fetchall()
-
-    # Формируем сообщение с таблицей лидеров
-    leaderboard_message = "🏆 Таблица лидеров:\n"
-    for i, (username, score) in enumerate(leaders, start=1):
-        leaderboard_message += f"{i}. {username}: {score} очков\n"
-
-    # Отправляем сообщение
-    await message.answer(leaderboard_message)
-
 def generate_options_keyboard(answer_options, right_answer):
     builder = InlineKeyboardBuilder()
 
@@ -163,7 +141,10 @@ async def cmd_quiz(message: types.Message):
     await message.answer(f"Давайте начнем квиз!")
     await new_quiz(message)
 
-
+@dp.message(Command("leaderboard"))
+async def cmd_leaderboard(message: types.Message):
+    # Выводим таблицу лидеров
+    await show_leaderboard(message)
 
 async def create_table():
     # Создаем соединение с базой данных (если она не существует, она будет создана)
@@ -174,6 +155,28 @@ async def create_table():
         await db.execute('''CREATE TABLE IF NOT EXISTS leaderboard (user_id INTEGER PRIMARY KEY, username TEXT, score INTEGER)''')
         # Сохраняем изменения
         await db.commit()
+
+async def update_leaderboard(user_id: int, username: str, score: int):
+    async with aiosqlite.connect(DB_NAME) as db:
+        # Вставляем или обновляем запись в таблице лидеров
+        await db.execute('''INSERT OR REPLACE INTO leaderboard (user_id, username, score)
+                            VALUES (?, ?, ?)''', (user_id, username, score))
+        await db.commit()
+
+async def show_leaderboard(message: types.Message):
+    async with aiosqlite.connect(DB_NAME) as db:
+        # Получаем топ-10 пользователей
+        async with db.execute('''SELECT username, score FROM leaderboard
+                                 ORDER BY score DESC LIMIT 10''') as cursor:
+            leaders = await cursor.fetchall()
+
+    # Формируем сообщение с таблицей лидеров
+    leaderboard_message = "🏆 Таблица лидеров:\n"
+    for i, (username, score) in enumerate(leaders, start=1):
+        leaderboard_message += f"{i}. {username}: {score} очков\n"
+
+    # Отправляем сообщение
+    await message.answer(leaderboard_message)
 
 
 
